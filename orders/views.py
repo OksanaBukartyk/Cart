@@ -17,8 +17,14 @@ def order_create(request):
     cart = Cart(request)
     if request.method == 'POST':
         form = OrderCreateForm(request.POST)
+
         if form.is_valid():
-            order = form.save()
+            order = form.save(commit=False)
+            if cart.coupon:
+                order.coupon = cart.coupon
+                order.discount = cart.coupon.discount
+            order.save()
+
             for item in cart:
                 OrderItem.objects.create(order=order,
                                          product=item['product'],
@@ -31,8 +37,7 @@ def order_create(request):
             # set the order in the session
             request.session['order_id'] = order.id
             # redirect for payment
-            return render(request,'orders/order/created.html',
-                          {'order':order})
+            return redirect(reverse('payment:process'))
     else:
         form = OrderCreateForm()
     return render(request,
